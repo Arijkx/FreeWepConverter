@@ -19,7 +19,7 @@
                 </svg>
                 Free WebP Converter
             </h1>
-            <p class="subtitle">Convert images to WebP format</p>
+            <p class="subtitle" id="subtitle">Convert images to WebP format</p>
         </header>
 
         <main class="main">
@@ -39,6 +39,13 @@
             <div class="settings-panel" id="settingsPanel" style="display: none;">
                 <h3>Settings</h3>
                 <div class="setting-group">
+                    <label for="conversionMode">Conversion Mode:</label>
+                    <select id="conversionMode" class="mode-select">
+                        <option value="toWebP">Convert to WebP</option>
+                        <option value="toPNG">Convert WebP to PNG</option>
+                    </select>
+                </div>
+                <div class="setting-group" id="qualityGroup">
                     <label for="qualitySlider">
                         Quality: <span id="qualityValue">80</span>%
                     </label>

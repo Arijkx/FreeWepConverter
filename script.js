@@ -1,5 +1,6 @@
 let images = [];
 let quality = 80;
+let conversionMode = 'toWebP'; // 'toWebP' or 'toPNG'
 
 const uploadArea = document.getElementById('uploadArea');
 const fileInput = document.getElementById('fileInput');
@@ -11,6 +12,9 @@ const qualitySlider = document.getElementById('qualitySlider');
 const qualityValue = document.getElementById('qualityValue');
 const convertAllBtn = document.getElementById('convertAllBtn');
 const clearBtn = document.getElementById('clearBtn');
+const conversionModeSelect = document.getElementById('conversionMode');
+const subtitle = document.getElementById('subtitle');
+const qualityGroup = document.getElementById('qualityGroup');
 
 uploadArea.addEventListener('click', () => fileInput.click());
 uploadArea.addEventListener('dragover', handleDragOver);
@@ -18,8 +22,13 @@ uploadArea.addEventListener('dragleave', handleDragLeave);
 uploadArea.addEventListener('drop', handleDrop);
 fileInput.addEventListener('change', handleFileSelect);
 qualitySlider.addEventListener('input', handleQualityChange);
+conversionModeSelect.addEventListener('change', handleModeChange);
 convertAllBtn.addEventListener('click', convertAllImages);
 clearBtn.addEventListener('click', clearAll);
+
+// Initialize mode
+qualityGroup.style.display = 'flex';
+fileInput.accept = 'image/*';
 
 function handleDragOver(e) {
     e.preventDefault();
@@ -34,14 +43,24 @@ function handleDragLeave(e) {
 function handleDrop(e) {
     e.preventDefault();
     uploadArea.classList.remove('dragover');
-    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+    const files = Array.from(e.dataTransfer.files).filter(file => {
+        if (conversionMode === 'toPNG') {
+            return file.type === 'image/webp';
+        }
+        return file.type.startsWith('image/');
+    });
     if (files.length > 0) {
         processFiles(files);
     }
 }
 
 function handleFileSelect(e) {
-    const files = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
+    const files = Array.from(e.target.files).filter(file => {
+        if (conversionMode === 'toPNG') {
+            return file.type === 'image/webp';
+        }
+        return file.type.startsWith('image/');
+    });
     if (files.length > 0) {
         processFiles(files);
     }
@@ -55,10 +74,10 @@ function processFiles(files) {
                 id: Date.now() + Math.random(),
                 file: file,
                 originalUrl: e.target.result,
-                webpUrl: null,
+                convertedUrl: null,
                 converted: false,
                 originalSize: file.size,
-                webpSize: null
+                convertedSize: null
             };
             images.push(imageData);
             renderPreview(imageData);
@@ -83,11 +102,12 @@ function renderPreview(imageData) {
     
     const info = document.createElement('div');
     info.className = 'preview-info';
+    const convertedFormat = conversionMode === 'toWebP' ? 'WebP' : 'PNG';
     info.innerHTML = `
         <div><strong>File:</strong> ${imageData.file.name}</div>
         <div><strong>Original Size:</strong> ${formatFileSize(imageData.originalSize)}</div>
-        <div id="webp-size-${imageData.id}">
-            ${imageData.converted ? `<strong>WebP Size:</strong> ${formatFileSize(imageData.webpSize)}` : ''}
+        <div id="converted-size-${imageData.id}">
+            ${imageData.converted ? `<strong>${convertedFormat} Size:</strong> ${formatFileSize(imageData.convertedSize)}` : ''}
         </div>
     `;
     
@@ -118,7 +138,7 @@ function renderPreview(imageData) {
             </svg>
             Download
         `;
-        downloadBtn.onclick = () => downloadWebP(imageData);
+        downloadBtn.onclick = () => downloadConverted(imageData);
         actionsDiv.appendChild(downloadBtn);
     }
     
@@ -155,22 +175,43 @@ function convertImage(imageData) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
         
-        canvas.toBlob((blob) => {
-            if (blob) {
-                imageData.webpUrl = URL.createObjectURL(blob);
-                imageData.webpSize = blob.size;
-                imageData.converted = true;
-                
-                // Update UI
-                updatePreviewCard(imageData);
-                
-                statusEl.className = 'status success';
-                statusEl.innerHTML = '<span>✓ Converted</span>';
-            } else {
-                statusEl.className = 'status';
-                statusEl.innerHTML = '<span style="color: var(--danger);">Error</span>';
-            }
-        }, 'image/webp', quality / 100);
+        if (conversionMode === 'toPNG') {
+            // Convert to PNG
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    imageData.convertedUrl = URL.createObjectURL(blob);
+                    imageData.convertedSize = blob.size;
+                    imageData.converted = true;
+                    
+                    // Update UI
+                    updatePreviewCard(imageData);
+                    
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = '<span>✓ Converted</span>';
+                } else {
+                    statusEl.className = 'status';
+                    statusEl.innerHTML = '<span style="color: var(--danger);">Error</span>';
+                }
+            }, 'image/png');
+        } else {
+            // Convert to WebP
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    imageData.convertedUrl = URL.createObjectURL(blob);
+                    imageData.convertedSize = blob.size;
+                    imageData.converted = true;
+                    
+                    // Update UI
+                    updatePreviewCard(imageData);
+                    
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = '<span>✓ Converted</span>';
+                } else {
+                    statusEl.className = 'status';
+                    statusEl.innerHTML = '<span style="color: var(--danger);">Error</span>';
+                }
+            }, 'image/webp', quality / 100);
+        }
     };
     
     img.onerror = () => {
@@ -185,9 +226,10 @@ function updatePreviewCard(imageData) {
     const card = document.getElementById(`preview-${imageData.id}`);
     if (!card) return;
     
-    const webpSizeEl = document.getElementById(`webp-size-${imageData.id}`);
-    if (webpSizeEl) {
-        webpSizeEl.innerHTML = `<strong>WebP Size:</strong> ${formatFileSize(imageData.webpSize)}`;
+    const convertedSizeEl = document.getElementById(`converted-size-${imageData.id}`);
+    if (convertedSizeEl) {
+        const convertedFormat = conversionMode === 'toWebP' ? 'WebP' : 'PNG';
+        convertedSizeEl.innerHTML = `<strong>${convertedFormat} Size:</strong> ${formatFileSize(imageData.convertedSize)}`;
     }
     
     const actionsDiv = card.querySelector('.preview-actions');
@@ -203,7 +245,7 @@ function updatePreviewCard(imageData) {
         </svg>
         Download
     `;
-    downloadBtn.onclick = () => downloadWebP(imageData);
+    downloadBtn.onclick = () => downloadConverted(imageData);
     actionsDiv.appendChild(downloadBtn);
     
     const removeBtn = document.createElement('button');
@@ -247,12 +289,13 @@ function convertAllImages() {
     });
 }
 
-function downloadWebP(imageData) {
-    if (!imageData.webpUrl) return;
+function downloadConverted(imageData) {
+    if (!imageData.convertedUrl) return;
     
     const link = document.createElement('a');
-    link.href = imageData.webpUrl;
-    const fileName = imageData.file.name.replace(/\.[^/.]+$/, '') + '.webp';
+    link.href = imageData.convertedUrl;
+    const extension = conversionMode === 'toWebP' ? '.webp' : '.png';
+    const fileName = imageData.file.name.replace(/\.[^/.]+$/, '') + extension;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
@@ -261,8 +304,8 @@ function downloadWebP(imageData) {
 
 function removeImage(id) {
     const imageData = images.find(img => img.id === id);
-    if (imageData && imageData.webpUrl) {
-        URL.revokeObjectURL(imageData.webpUrl);
+    if (imageData && imageData.convertedUrl) {
+        URL.revokeObjectURL(imageData.convertedUrl);
     }
     
     images = images.filter(img => img.id !== id);
@@ -280,8 +323,8 @@ function removeImage(id) {
 
 function clearAll() {
     images.forEach(imageData => {
-        if (imageData.webpUrl) {
-            URL.revokeObjectURL(imageData.webpUrl);
+        if (imageData.convertedUrl) {
+            URL.revokeObjectURL(imageData.convertedUrl);
         }
     });
     
@@ -291,6 +334,24 @@ function clearAll() {
     previewSection.style.display = 'none';
     actions.style.display = 'none';
     fileInput.value = '';
+}
+
+function handleModeChange(e) {
+    conversionMode = e.target.value;
+    
+    // Update subtitle
+    if (conversionMode === 'toPNG') {
+        subtitle.textContent = 'Convert WebP images to PNG format';
+        qualityGroup.style.display = 'none';
+        fileInput.accept = 'image/webp';
+    } else {
+        subtitle.textContent = 'Convert images to WebP format';
+        qualityGroup.style.display = 'flex';
+        fileInput.accept = 'image/*';
+    }
+    
+    // Clear existing images when switching modes
+    clearAll();
 }
 
 function handleQualityChange(e) {

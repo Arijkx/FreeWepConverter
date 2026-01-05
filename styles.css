@@ -132,6 +132,11 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    margin-bottom: 16px;
+}
+
+.setting-group:last-child {
+    margin-bottom: 0;
 }
 
 .setting-group label {
@@ -167,6 +172,29 @@ input[type="range"]::-moz-range-thumb {
     background: var(--accent);
     cursor: pointer;
     border: 2px solid var(--bg-secondary);
+}
+
+.mode-select {
+    width: 100%;
+    padding: 8px 12px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mode-select:hover {
+    border-color: var(--accent);
+}
+
+.mode-select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
 }
 
 .preview-section {
